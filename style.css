@@ -5,7 +5,7 @@ header {
     align-items: center;
     justify-content: space-between;
     padding: 15px 50px;
-    background-color: #1a73e8; /* Islamic blue */
+    background-color: #1E7D46; /* Islamic blue */
     color: white;
     flex-wrap: wrap; /* allows wrapping on smaller screens */
 }
