@@ -169,17 +169,42 @@
     <footer>
         <p>&copy; 2025 Nak Wears | Nakiranda Hafuswa</p>
     </footer>
-    <script>
-        function orderProduct(productName) {
-            const customerName = prompt('Enter your full name:');
-            const address = prompt('Enter your delivery address:');
-            const emergency = prompt('Enter emergency contact:');
-            if(customerName && address && emergency){
-                const phone = '256708231569';
-                const text = Order Details:\nProduct: ${productName}\nCustomer: ${customerName}\nAddress: ${address}\nEmergency Contact: ${emergency};
-                window.open(https://wa.me/${phone}?text=${encodeURIComponent(text)}, '_blank');
-            }
-        }
+   <script>
+        function buildCategoryFilter(){ const cat = Array.from(new Set(PRODUCTS.map(p=>p.category))); const sel = document.getElementById('category-filter'); sel.innerHTML='<option value="all">All categories</option>'; cat.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o)}); }
+
+        function renderProducts(){ const grid = document.getElementById('products-grid'); grid.innerHTML=''; const q = document.getElementById('search').value.toLowerCase(); const cat = document.getElementById('category-filter').value; const price = document.getElementById('price-filter').value; PRODUCTS.filter(p=>{ if(q && !(p.name.toLowerCase().includes(q) || (p.desc||'').toLowerCase().includes(q))) return false; if(cat!=='all' && p.category!==cat) return false; if(price!=='all'){ const [min,max]=price.split('-').map(Number); if(!(p.price>=min && p.price<=max)) return false; } return true; }).forEach(p=>{ const el = document.createElement('div'); el.className='card'; el.innerHTML = `<img src="${p.img}" alt="${p.name}"><div style="display:flex;justify-content:space-between;margin-top:8px"><div><strong>${p.name}</strong><div style="color:var(--muted)">${p.category}</div></div><div style="text-align:right">UGX ${numberWithCommas(p.price)}<div style="margin-top:8px"><button onclick="openModal(${p.id})">View</button> <button onclick="addToCart(${p.id})">Add</button></div></div></div>`; grid.appendChild(el); }); updateCart(); }
+
+        function numberWithCommas(x){return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",")}
+
+        function openModal(id){ const p = PRODUCTS.find(x=>x.id===id); const box = document.getElementById('modal-content'); box.innerHTML = `<div style="display:flex;gap:12px"><div style="flex:1"><img src="${p.img}" style="width:100%;border-radius:8px"></div><div style="flex:1"><h2>${p.name}</h2><p>${p.desc}</p><div>UGX ${numberWithCommas(p.price)}</div><div style="margin-top:12px"><button class="btn" onclick="addToCart(${p.id})">Add to Cart</button> <button onclick="openWhatsApp(p.name)">Order via WhatsApp</button></div></div></div>`; document.getElementById('product-modal').style.display='flex'; }
+            function closeModal(){ document.getElementById('product-modal').style.display='none'; }
+
+            const CART = {items:{},count:0,total:0};
+            function addToCart(id){ const p = PRODUCTS.find(x=>x.id===id); if(!CART.items[id]) CART.items[id] = {...p, qty:0}; CART.items[id].qty++; updateCart(); openCart(); }
+            function updateCart(){ const el = document.getElementById('cart-items'); if(!el) return; el.innerHTML=''; let total=0, count=0; Object.values(CART.items).forEach(it=>{ total += it.price * it.qty; count += it.qty; const row = document.createElement('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.padding='8px 0'; row.innerHTML = `<div>${it.name} x ${it.qty}</div><div>UGX ${numberWithCommas(it.price*it.qty)}</div>`; el.appendChild(row); }); CART.total = total; CART.count = count; const cartTotal = document.getElementById('cart-total'); if(cartTotal) cartTotal.textContent = 'UGX '+numberWithCommas(total); const cartBtn = document.getElementById('cart-btn'); if(cartBtn) cartBtn.textContent = `Cart (${count})`; }
+        function openCart(){ document.getElementById('cart').classList.add('open'); document.getElementById('cart').style.transform='translateX(0)'; }
+        function toggleCart(){ document.getElementById('cart').style.transform = document.getElementById('cart').style.transform === 'translateX(0px)' ? 'translateX(120%)' : 'translateX(0)'; }
+
+        function checkoutWhatsApp(){ if(CART.count === 0){ alert('Cart empty'); return; } const parts = []; Object.values(CART.items).forEach(i=> parts.push(`${i.qty} x ${i.name} (UGX ${numberWithCommas(i.price)})`)); const msg = `Hello MODESTY WEARS, I'd like to order:\n${parts.join('\n')}\nTotal: UGX ${numberWithCommas(CART.total)}\nName:\nPhone:`; const link = 'https://wa.me/+256748446542?text=' + encodeURIComponent(msg); window.open(link,'_blank'); }
+
+            function loadPayPalButton(){ const script = document.createElement('script'); script.src = 'https://www.paypal.com/sdk/js?client-id=CLIENT_ID&currency=USD'; script.onload = ()=>{ if(!window.paypal) return; paypal.Buttons({ createOrder: function(data, actions){ if(CART.count===0){ alert('Cart empty'); return; } return actions.order.create({purchase_units:[{amount:{value:(CART.total/100000).toFixed(2)}}]}); }, onApprove: function(data, actions){ return actions.order.capture().then(function(details){ alert('Payment completed: ' + details.id); clearCart(); }); }, onError: function(err){ console.error(err); alert('PayPal error'); } }).render('#paypal-button-container'); }; document.head.appendChild(script); }
+
+        function mobileMoneyFlow(){ if(CART.count === 0){ alert('Cart empty'); return; } const phone = prompt('Enter mobile money phone number (e.g. 0770000000)'); if(!phone) return; alert('A simulated mobile money prompt has been sent to ' + phone + '\n(Real integration requires a payment gateway and server).'); clearCart(); }
+
+        function clearCart(){ CART.items={}; CART.count=0; CART.total=0; updateCart(); document.getElementById('cart').style.transform='translateX(120%)'; }
+
+        function openWhatsApp(name){ const text = `Hi, do you have ${name} in stock?`; window.open('https://wa.me/+256708231569?text='+encodeURIComponent(text),'_blank'); }
+
+        document.getElementById('search').addEventListener('input', renderProducts);
+        document.getElementById('category-filter').addEventListener('change', renderProducts);
+        document.getElementById('price-filter').addEventListener('change', renderProducts);
+
+        function resetFilters(){ document.getElementById('search').value=''; document.getElementById('category-filter').value='all'; document.getElementById('price-filter').value='all'; renderProducts(); }
+
+        buildCategoryFilter(); renderProducts(); loadPayPalButton();
+
+        window.addEventListener('storage', ()=>{ PRODUCTS = loadProducts(); buildCategoryFilter(); renderProducts(); });
     </script>
 </body>
+
 </html>
